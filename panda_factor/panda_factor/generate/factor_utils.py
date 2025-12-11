@@ -1,14 +1,141 @@
+"""
+因子计算工具模块
+
+本模块提供了一个因子计算工具类 `FactorUtils`，它包含了所有常用的因子计算方法。
+就像一个"因子计算工具箱"，提供了从基础数学运算到复杂技术指标的各种工具函数。
+
+核心概念
+--------
+
+- **静态方法**：所有方法都是静态方法，可以直接通过类名调用
+- **工具函数**：提供了常用的因子计算函数（如排名、收益率、标准差等）
+- **技术指标**：提供了各种技术分析指标（如 MACD、RSI、KDJ 等）
+
+为什么需要这个模块？
+-------------------
+
+在因子计算中，有很多常用的函数和指标：
+- 基础函数：排名、收益率、标准差等
+- 技术指标：MACD、RSI、KDJ 等
+- 数学运算：对数、幂、绝对值等
+
+如果每个因子都自己实现这些功能，会导致：
+- 代码重复
+- 实现不一致
+- 维护困难
+
+这个工具类统一管理这些功能，解决了这些问题。
+
+工作原理（简单理解）
+------------------
+
+就像工具箱：
+
+1. **提供工具**：提供各种计算工具（就像提供各种工具）
+2. **统一接口**：所有工具都有统一的调用方式（就像所有工具都有统一的使用方法）
+3. **即用即取**：需要什么工具直接调用（就像需要什么工具直接拿）
+
+注意事项
+--------
+
+- 所有方法都是静态方法，可以直接通过 `FactorUtils.method_name()` 调用
+- 输入和输出的 Series 通常需要 (date, symbol) 多级索引
+- 某些技术指标需要足够的历史数据才能准确计算
+"""
+
 import pandas as pd
 import numpy as np
 from typing import Tuple
 
 
 class FactorUtils:
-    """Factor calculation utility class, provides all common calculation methods"""
+    """因子计算工具类
+
+    这个类提供了所有常用的因子计算方法，包括基础函数、技术指标等。
+    就像一个"因子计算工具箱"，提供了从基础数学运算到复杂技术指标的各种工具。
+
+    为什么需要这个类？
+    -----------------
+
+    在因子计算中，有很多常用的函数和指标：
+    - 基础函数：排名、收益率、标准差等
+    - 技术指标：MACD、RSI、KDJ 等
+    - 数学运算：对数、幂、绝对值等
+
+    如果每个因子都自己实现这些功能，会导致：
+    - 代码重复
+    - 实现不一致
+    - 维护困难
+
+    这个工具类统一管理这些功能，解决了这些问题。
+
+    工作原理（简单理解）
+    ------------------
+
+    就像工具箱：
+
+    1. **提供工具**：提供各种计算工具（就像提供各种工具）
+    2. **统一接口**：所有工具都有统一的调用方式（就像所有工具都有统一的使用方法）
+    3. **即用即取**：需要什么工具直接调用（就像需要什么工具直接拿）
+
+    实际使用场景
+    -----------
+
+    在因子类中使用工具方法：
+
+    ```python
+    class MyFactor(Factor):
+        def calculate(self, factors):
+            close = factors['close']
+            # 使用工具类的方法
+            returns = FactorUtils.RETURNS(close)
+            rank = FactorUtils.RANK(returns)
+            return rank
+    ```
+
+    注意事项
+    --------
+
+    - 所有方法都是静态方法，可以直接通过 `FactorUtils.method_name()` 调用
+    - 输入和输出的 Series 通常需要 (date, symbol) 多级索引
+    - 某些技术指标需要足够的历史数据才能准确计算
+    """
 
     @staticmethod
     def RANK(series: pd.Series) -> pd.Series:
-        """Cross-sectional ranking, normalized to [-0.5, 0.5] range"""
+        """横截面排名，归一化到 [-0.5, 0.5] 范围
+
+        这个函数会将每个日期的所有股票按照数值大小进行排名，
+        并将排名归一化到 [-0.5, 0.5] 范围。
+
+        为什么需要这个函数？
+        --------------------
+
+        在因子分析中，经常需要对股票进行排名：
+        - 动量因子：按照收益率排名
+        - 价值因子：按照估值指标排名
+        - 质量因子：按照财务指标排名
+
+        排名后的值需要归一化，以便：
+        - 不同因子的值可以在同一尺度上比较
+        - 方便进行因子组合
+
+        工作原理
+        --------
+
+        1. 按日期分组，对每个日期的所有股票进行排名
+        2. 将排名归一化到 [-0.5, 0.5] 范围
+        3. 缺失值填充为 0
+
+        Args:
+            series: 要排名的 Series，索引为 (date, symbol) 多级索引
+
+        Returns:
+            pd.Series: 排名后的 Series，值在 [-0.5, 0.5] 之间
+
+        Example:
+            >>> volume_rank = FactorUtils.RANK(factors['volume'])
+        """
 
         def rank_group(group):
             valid_data = group.dropna()
@@ -44,14 +171,37 @@ class FactorUtils:
 
     @staticmethod
     def RETURNS(close: pd.Series, period: int = 1) -> pd.Series:
-        """Calculate returns
+        """计算收益率
+
+        这个函数会计算每只股票的收益率（百分比变化）。
+
+        为什么需要这个函数？
+        --------------------
+
+        在因子分析中，收益率是最常用的指标之一：
+        - 动量因子：基于历史收益率
+        - 反转因子：基于短期收益率
+        - 风险因子：基于收益率的波动
+
+        这个函数提供了统一的收益率计算方法。
+
+        工作原理
+        --------
+
+        1. 按股票代码分组
+        2. 对每只股票按日期排序
+        3. 计算百分比变化（pct_change）
+        4. 前 period 天的收益率设为 0
 
         Args:
-            close: Price series
-            period: Return calculation period, default is 1
+            close: 收盘价 Series，索引为 (date, symbol) 多级索引
+            period: 收益率计算周期，默认 1（即日收益率）
 
         Returns:
-            pd.Series: Return series
+            pd.Series: 收益率 Series，索引为 (date, symbol)
+
+        Example:
+            >>> returns = FactorUtils.RETURNS(factors['close'], period=1)
         """
 
         def calculate_returns(group):
@@ -65,14 +215,37 @@ class FactorUtils:
 
     @staticmethod
     def FUTURE_RETURNS(close: pd.Series, period: int = 1) -> pd.Series:
-        """Calculate future returns
+        """计算未来收益率
+
+        这个函数会计算每只股票的未来收益率，即从当前价格到未来 period 期价格的收益率。
+        常用于因子回测，用于评估因子的预测能力。
+
+        为什么需要这个函数？
+        --------------------
+
+        在因子回测中，需要计算未来收益率来评估因子的预测能力：
+        - 如果因子值高，未来收益率应该也高（正相关）
+        - 如果因子值低，未来收益率应该也低（正相关）
+
+        这个函数提供了计算未来收益率的能力。
+
+        工作原理
+        --------
+
+        1. 按股票代码分组
+        2. 将价格向后移动 period 期（获取未来价格）
+        3. 计算从当前价格到未来价格的百分比变化
+        4. 最后 period 天的收益率设为 0（因为没有未来数据）
 
         Args:
-            close: Price series
-            period: Future periods to calculate returns for, default is 1
+            close: 收盘价 Series，索引为 (date, symbol) 多级索引
+            period: 未来周期数，默认 1（即计算未来1天的收益率）
 
         Returns:
-            pd.Series: Future return series
+            pd.Series: 未来收益率 Series，索引为 (date, symbol)
+
+        Example:
+            >>> future_returns = FactorUtils.FUTURE_RETURNS(factors['close'], period=1)
         """
 
         def calculate_future_returns(group):
@@ -90,7 +263,17 @@ class FactorUtils:
 
     @staticmethod
     def STDDEV(series: pd.Series, window: int = 20) -> pd.Series:
-        """Calculate rolling standard deviation"""
+        """计算滚动标准差
+
+        计算每只股票在指定窗口内的滚动标准差（波动率）。
+
+        Args:
+            series: 要计算标准差的 Series，索引为 (date, symbol) 多级索引
+            window: 滚动窗口大小，默认 20
+
+        Returns:
+            pd.Series: 滚动标准差 Series
+        """
 
         def rolling_std(group):
             group = group.sort_index(level='date')
@@ -102,15 +285,17 @@ class FactorUtils:
 
     @staticmethod
     def CORRELATION(series1: pd.Series, series2: pd.Series, window: int = 20) -> pd.Series:
-        """Calculate rolling correlation coefficient
+        """计算滚动相关系数
+
+        计算两个序列在指定窗口内的滚动相关系数。
 
         Args:
-            series1: First series
-            series2: Second series
-            window: Rolling window size
+            series1: 第一个序列，索引为 (date, symbol) 多级索引
+            series2: 第二个序列，索引为 (date, symbol) 多级索引
+            window: 滚动窗口大小，默认 20
 
         Returns:
-            pd.Series: Correlation coefficient series
+            pd.Series: 滚动相关系数 Series，值在 [-1, 1] 之间
         """
         # Handle FactorSeries type
         if hasattr(series1, 'series'):
@@ -123,17 +308,48 @@ class FactorUtils:
 
     @staticmethod
     def IF(condition, true_value, false_value):
-        """Conditional selection function"""
+        """条件选择函数
+
+        根据条件选择返回 true_value 或 false_value，类似于 Excel 的 IF 函数。
+
+        Args:
+            condition: 条件 Series，布尔类型
+            true_value: 条件为真时的返回值
+            false_value: 条件为假时的返回值
+
+        Returns:
+            pd.Series: 根据条件选择后的 Series
+        """
         return pd.Series(np.where(condition, true_value, false_value), index=condition.index)
 
     @staticmethod
     def DELAY(series: pd.Series, period: int = 1) -> pd.Series:
-        """Calculate lagged values"""
+        """计算滞后值
+
+        将数据向前移动指定的期数，返回过去某个时间点的值。
+
+        Args:
+            series: 要计算滞后值的 Series，索引为 (date, symbol) 多级索引
+            period: 滞后期数，默认 1
+
+        Returns:
+            pd.Series: 滞后值 Series，前 period 天的值为 NaN
+        """
         return series.groupby(level='symbol').shift(period)
 
     @staticmethod
     def SUM(series: pd.Series, window: int = 20) -> pd.Series:
-        """Calculate rolling sum"""
+        """计算滚动和
+
+        计算每只股票在指定窗口内的滚动和。
+
+        Args:
+            series: 要计算滚动和的 Series，索引为 (date, symbol) 多级索引
+            window: 滚动窗口大小，默认 20
+
+        Returns:
+            pd.Series: 滚动和 Series
+        """
         # Handle FactorSeries type
         if hasattr(series, 'series'):
             series = series.series
@@ -142,9 +358,17 @@ class FactorUtils:
 
     @staticmethod
     def TS_ARGMAX(series: pd.Series, window: int) -> pd.Series:
-        """
-        Calculate time series maximum value position
-        Returns position normalized to [0, 1] range, 0 means earliest, 1 means latest
+        """计算时间序列最大值位置
+
+        计算滚动窗口内最大值出现的位置，归一化到 [0, 1] 范围。
+        0 表示最早，1 表示最晚。
+
+        Args:
+            series: 要计算的 Series，索引为 (date, symbol) 多级索引
+            window: 滚动窗口大小
+
+        Returns:
+            pd.Series: 最大值位置 Series，值在 [0, 1] 之间
         """
 
         def rolling_argmax(group):
@@ -183,7 +407,17 @@ class FactorUtils:
 
     @staticmethod
     def TS_RANK(series: pd.Series, window: int = 20) -> pd.Series:
-        """Calculate time series rank"""
+        """计算时间序列排名
+
+        计算每只股票在滚动窗口内的排名（相对于该股票的历史值）。
+
+        Args:
+            series: 要计算排名的 Series，索引为 (date, symbol) 多级索引
+            window: 滚动窗口大小，默认 20
+
+        Returns:
+            pd.Series: 排名 Series，值在 [0, 1] 之间（百分比排名）
+        """
 
         def ts_rank(group):
             return group.rolling(window=window, min_periods=1).apply(
@@ -237,7 +471,16 @@ class FactorUtils:
 
     @staticmethod
     def SCALE(series: pd.Series) -> pd.Series:
-        """Scale series to [-1, 1] range"""
+        """将序列缩放到 [-1, 1] 范围
+
+        对每个日期的所有股票进行横截面缩放，将值归一化到 [-1, 1] 范围。
+
+        Args:
+            series: 要缩放的 Series，索引为 (date, symbol) 多级索引
+
+        Returns:
+            pd.Series: 缩放后的 Series，值在 [-1, 1] 之间
+        """
         # Save original index
         original_index = series.index
 
@@ -261,7 +504,16 @@ class FactorUtils:
     # TODO
     @staticmethod
     def INDUSTRY_NEUTRALIZE(series: pd.Series) -> pd.Series:
-        """Industry neutralization"""
+        """行业中性化
+
+        对每个日期的所有股票，减去该日期的平均值，实现行业中性化。
+
+        Args:
+            series: 要中性化的 Series，索引为 (date, symbol) 多级索引
+
+        Returns:
+            pd.Series: 中性化后的 Series（均值为 0）
+        """
         return series.groupby(level='date').apply(lambda x: x - x.mean())
 
     @staticmethod
@@ -607,16 +859,27 @@ class FactorUtils:
     # ------------------   Level 2: Technical indicator functions (implemented using Level 0 and 1 functions) ------------------------------
     @staticmethod
     def MACD(CLOSE: pd.Series, SHORT: int = 12, LONG: int = 26, M: int = 9) -> Tuple[pd.Series, pd.Series, pd.Series]:
-        """Calculate MACD indicator using EMA, requires 120 days for accuracy
+        """计算 MACD 指标
+
+        MACD（Moving Average Convergence Divergence）是一种趋势跟踪动量指标。
+        需要至少 120 天的历史数据才能准确计算。
+
+        工作原理：
+        1. DIF = 短期EMA - 长期EMA（快线）
+        2. DEA = DIF 的 M 期 EMA（慢线/信号线）
+        3. MACD = (DIF - DEA) * 2（柱状图）
 
         Args:
-            CLOSE: Close price series
-            SHORT: Short period EMA, default 12
-            LONG: Long period EMA, default 26
-            M: Signal line period, default 9
+            CLOSE: 收盘价 Series，索引为 (date, symbol) 多级索引
+            SHORT: 短期 EMA 周期，默认 12
+            LONG: 长期 EMA 周期，默认 26
+            M: 信号线周期，默认 9
 
         Returns:
-            Tuple[pd.Series, pd.Series, pd.Series]: DIF (MACD line), DEA (signal line), MACD histogram
+            Tuple[pd.Series, pd.Series, pd.Series]: (DIF, DEA, MACD)
+                - DIF: MACD 线（快线）
+                - DEA: 信号线（慢线）
+                - MACD: MACD 柱状图
         """
         DIF = FactorUtils.EMA(CLOSE, SHORT) - FactorUtils.EMA(CLOSE, LONG)
         DEA = FactorUtils.EMA(DIF, M)

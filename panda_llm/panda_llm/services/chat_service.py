@@ -1,3 +1,46 @@
+"""
+聊天服务模块
+
+本模块提供了聊天服务的核心业务逻辑，包括消息处理、会话管理和流式响应。
+它协调 MongoDB 服务和 LLM 服务，提供完整的聊天功能。
+
+核心概念
+--------
+
+- **消息处理**：处理用户消息，调用 LLM 生成回答
+- **会话管理**：管理聊天会话的创建、查询和删除
+- **流式响应**：支持流式返回 AI 回答，提供更好的用户体验
+
+为什么需要这个模块？
+-------------------
+
+在聊天服务中，需要协调多个服务：
+- 需要管理聊天会话
+- 需要调用 LLM 生成回答
+- 需要保存对话历史
+- 需要支持流式响应
+
+这个模块提供了完整的聊天服务能力。
+
+工作原理（简单理解）
+------------------
+
+就像聊天系统的核心：
+
+1. **接收消息**：接收用户的消息（就像接收消息）
+2. **管理会话**：获取或创建聊天会话（就像管理对话）
+3. **调用 AI**：调用 LLM 生成回答（就像让 AI 回答）
+4. **保存历史**：保存对话历史到数据库（就像保存记录）
+5. **返回回答**：返回 AI 的回答（就像返回回答）
+
+注意事项
+--------
+
+- 支持流式和非流式两种响应模式
+- 自动管理会话的创建和更新
+- 所有对话历史都会保存到数据库
+"""
+
 from datetime import datetime
 from typing import List, Optional, AsyncGenerator
 from panda_common.logger_config import logger
@@ -8,6 +51,39 @@ import uuid
 
 
 class ChatService:
+    """聊天服务
+
+    这个类提供了聊天服务的核心业务逻辑，包括消息处理、会话管理和流式响应。
+    它协调 MongoDB 服务和 LLM 服务，提供完整的聊天功能。
+
+    为什么需要这个类？
+    -----------------
+
+    在聊天服务中，需要协调多个服务：
+    - 需要管理聊天会话
+    - 需要调用 LLM 生成回答
+    - 需要保存对话历史
+    - 需要支持流式响应
+
+    这个类提供了完整的聊天服务能力。
+
+    实际使用场景
+    -----------
+
+    处理用户消息并获取回答：
+
+    ```python
+    service = ChatService()
+    response = await service.process_message("session123", "如何计算动量因子？", "user1")
+    ```
+
+    注意事项
+    --------
+
+    - 支持流式和非流式两种响应模式
+    - 自动管理会话的创建和更新
+    - 所有对话历史都会保存到数据库
+    """
     def __init__(self):
         self.mongodb = MongoDBService()
         self.logger = logger
@@ -58,7 +134,46 @@ class ChatService:
         await self.mongodb.delete_chat_session(session_id)
 
     async def process_message_stream(self, user_id: str, message: str, session_id: Optional[str] = None) -> AsyncGenerator[str, None]:
-        """处理用户消息并流式返回回复"""
+        """处理用户消息并流式返回回复
+
+        这个函数处理用户消息，并以流式方式返回 AI 的回答。
+        适用于需要实时显示回答的场景，提供更好的用户体验。
+
+        为什么需要这个函数？
+        --------------------
+
+        流式响应提供更好的用户体验：
+        - 用户可以实时看到回答生成过程
+        - 不需要等待完整回答，响应更快
+        - 提供类似 ChatGPT 的交互体验
+
+        工作原理
+        --------
+
+        1. 创建用户消息
+        2. 获取或创建会话
+        3. 保存用户消息到会话
+        4. 调用 LLM 流式生成回答
+        5. 逐个返回回答片段
+        6. 保存完整回答到会话
+
+        Args:
+            user_id: 用户 ID
+            message: 用户消息
+            session_id: 会话 ID（可选，如果不存在则创建新会话）
+
+        Yields:
+            str: AI 回答的片段（逐个 token）
+
+        Raises:
+            ValueError: 如果指定的会话不存在
+            Exception: 如果处理消息失败
+
+        Example:
+            >>> service = ChatService()
+            >>> async for chunk in service.process_message_stream("user1", "你好"):
+            ...     print(chunk, end='')
+        """
         try:
             # 创建用户消息
             user_message = Message(

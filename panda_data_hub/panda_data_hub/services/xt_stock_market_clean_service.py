@@ -1,3 +1,44 @@
+"""
+XtQuant 股票市场数据清洗服务模块
+
+本模块提供了从 XtQuant（迅投）数据源获取和清洗股票市场数据的服务。
+它会从 XtQuant 获取股票的历史行情数据，进行清洗和转换，然后存储到 MongoDB。
+
+核心概念
+--------
+
+- **数据源**：XtQuant（迅投）数据平台
+- **数据清洗**：获取原始数据，清洗、转换格式，存储到数据库
+- **并行处理**：使用多线程并行处理多个交易日的数据
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，需要获取高质量的股票市场数据：
+- XtQuant 提供了丰富的历史数据
+- 需要将数据清洗并统一格式
+- 需要处理大量数据，并行处理可以提高效率
+
+这个模块提供了从 XtQuant 获取和清洗数据的能力。
+
+工作原理（简单理解）
+------------------
+
+就像数据加工厂：
+
+1. **连接数据源**：初始化 XtQuant 连接
+2. **获取原始数据**：从 XtQuant 获取历史行情数据
+3. **清洗数据**：清洗、转换数据格式
+4. **存储数据**：将清洗后的数据存储到 MongoDB
+
+注意事项
+--------
+
+- 需要 XtQuant 的认证信息（在 config 中配置）
+- 数据清洗会跳过非交易日
+- 使用并行处理提高效率，但要注意 API 调用频率限制
+"""
+
 import time
 from datetime import datetime
 from pymongo import UpdateOne
@@ -16,6 +57,38 @@ from panda_data_hub.utils.xt_utils import xt_is_trading_day, XTQuantManager
 
 
 class StockMarketCleanXTServicePRO(ABC):
+    """XtQuant 股票市场数据清洗服务
+
+    这个类提供了从 XtQuant 数据源获取和清洗股票市场数据的功能。
+    就像一个"数据加工厂"，它会从 XtQuant 获取数据，清洗后存储到数据库。
+
+    为什么需要这个类？
+    -----------------
+
+    在量化分析中，需要获取高质量的股票市场数据：
+    - XtQuant 提供了丰富的历史数据
+    - 需要将数据清洗并统一格式
+    - 需要处理大量数据，并行处理可以提高效率
+
+    这个类提供了从 XtQuant 获取和清洗数据的能力。
+
+    实际使用场景
+    -----------
+
+    清洗一年的股票市场数据：
+
+    ```python
+    service = StockMarketCleanXTServicePRO(config)
+    service.stock_market_clean_by_time("2024-01-01", "2024-12-31")
+    ```
+
+    注意事项
+    --------
+
+    - 需要 XtQuant 的认证信息（在 config 中配置）
+    - 数据清洗会跳过非交易日
+    - 使用并行处理提高效率，但要注意 API 调用频率限制
+    """
     def __init__(self, config):
         self.config = config
         self.db_handler = DatabaseHandler(config)

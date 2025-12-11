@@ -1,11 +1,53 @@
+"""
+响应数据模型模块
+
+本模块定义了 API 响应的数据模型，包括因子列表、因子详情、图表数据等响应的数据结构。
+使用 Pydantic 进行数据验证和序列化。
+
+核心概念
+--------
+
+- **响应模型**：定义 API 响应的数据结构
+- **数据序列化**：使用 Pydantic 进行数据序列化
+- **图表数据**：定义各种分析图表的数据结构
+
+为什么需要这个模块？
+-------------------
+
+在 API 设计中，需要定义响应数据结构：
+- 需要统一响应格式
+- 需要提供字段说明
+- 需要确保数据格式正确
+
+这个模块提供了这些响应模型。
+
+注意事项
+--------
+
+- 使用 Pydantic 进行数据验证和序列化
+- 提供详细的字段描述和示例
+- 自定义时间字段的序列化格式
+"""
+
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import Optional, Union, List
 from server.models.common import Params
 
 class FactorListResponse(BaseModel):
-    """
-    因子排行榜
+    """因子排行榜响应模型
+
+    这个类定义了因子排行榜的数据结构。
+
+    Attributes:
+        id: 因子 ID
+        factor_name: 因子名称
+        daily_return: 收益率，单位%
+        sharpe_ratio: 夏普率
+        IC: IC 值
+        IR: IR 值
+        updated_at: 更新时间
+        created_at: 创建时间
     """
     id: str = Field(..., description="因子ID")
     factor_name: str = Field(..., example="百分百胜率空手姐白刃", description="因子名称")

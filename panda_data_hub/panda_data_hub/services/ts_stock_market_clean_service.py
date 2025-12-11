@@ -1,3 +1,41 @@
+"""
+Tushare 股票市场数据清洗服务模块
+
+本模块提供了从 Tushare 数据源获取和清洗股票市场数据的服务。
+它会从 Tushare 获取股票的历史行情数据，进行清洗和转换，然后存储到 MongoDB。
+
+核心概念
+--------
+
+- **数据源**：Tushare 数据平台
+- **数据清洗**：获取原始数据，清洗、转换格式，存储到数据库
+- **并行处理**：使用多线程并行处理多个交易日的数据
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，需要获取高质量的股票市场数据：
+- Tushare 提供了丰富的历史数据
+- 需要将数据清洗并统一格式
+- 需要处理大量数据，并行处理可以提高效率
+
+注意事项
+--------
+
+⚠️ **重要提示**：Tushare 对接口返回数据条数有严格限制，无法一次拉取全量数据。
+此限制会导致接口运行效率偏低，请耐心等待。
+
+工作原理（简单理解）
+------------------
+
+就像数据加工厂：
+
+1. **连接数据源**：初始化 Tushare 连接
+2. **获取原始数据**：从 Tushare 获取历史行情数据（受数据条数限制）
+3. **清洗数据**：清洗、转换数据格式
+4. **存储数据**：将清洗后的数据存储到 MongoDB
+"""
+
 from abc import ABC
 
 
@@ -17,16 +55,6 @@ from panda_common.utils.stock_utils import get_exchange_suffix
 from panda_data_hub.utils.mongo_utils import ensure_collection_and_indexes
 from panda_data_hub.utils.ts_utils import calculate_upper_limit, ts_is_trading_day, get_previous_month_dates, \
     calculate_lower_limit
-
-"""
-       使用须知：因tushare对于接口返回数据条数具有严格限制，故无法一次拉取全量数据。此限制会导致接口运行效率偏低，请耐心等待。
-
-       参数:
-       date: 日期字符串，格式为 "YYYY-MM-DD"
-
-       返回:
-       bool: 如果是交易日返回 True，否则返回 False
-       """
 
 
 class StockMarketCleanTSServicePRO(ABC):

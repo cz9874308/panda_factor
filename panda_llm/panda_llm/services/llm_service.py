@@ -1,3 +1,46 @@
+"""
+大语言模型服务模块
+
+本模块提供了与大语言模型（LLM）交互的服务，使用 OpenAI 兼容的 API（如 DeepSeek）。
+它专门针对因子开发场景，配置了系统提示词，限制模型只能回答因子开发相关的问题。
+
+核心概念
+--------
+
+- **LLM 服务**：封装与大语言模型的交互逻辑
+- **系统提示词**：定义 AI 助手的角色和行为规范
+- **流式响应**：支持流式返回，提供更好的用户体验
+
+为什么需要这个模块？
+-------------------
+
+在因子开发过程中，需要智能助手帮助：
+- 编写和优化因子代码
+- 解释内置函数的使用方法
+- 调试因子代码
+- 提供因子开发建议
+
+这个模块封装了与 LLM 的交互，提供了统一的接口。
+
+工作原理（简单理解）
+------------------
+
+就像与 AI 助手对话：
+
+1. **初始化连接**：创建 LLM 客户端连接（就像连接 AI 助手）
+2. **配置角色**：设置系统提示词，定义助手角色（就像告诉助手它的职责）
+3. **发送消息**：将用户消息和历史对话发送给 LLM（就像提问）
+4. **接收回答**：接收 LLM 生成的回答（就像收到回答）
+
+注意事项
+--------
+
+- 使用 OpenAI 兼容的 API，支持 DeepSeek 等模型
+- 系统提示词限制模型只能回答因子开发相关问题
+- 所有回答都使用中文
+- 支持流式和非流式两种响应模式
+"""
+
 import openai
 from panda_common.logger_config import logger
 from panda_common.config import get_config
@@ -6,19 +49,94 @@ import json
 from typing import Optional, Dict, List, Any, Union
 
 class LLMService:
+    """大语言模型服务
+
+    这个类封装了与大语言模型的交互逻辑，提供了聊天完成和流式响应功能。
+    它专门针对因子开发场景，配置了系统提示词，限制模型只能回答因子开发相关的问题。
+
+    为什么需要这个类？
+    -----------------
+
+    在因子开发过程中，需要智能助手帮助：
+    - 编写和优化因子代码
+    - 解释内置函数的使用方法
+    - 调试因子代码
+    - 提供因子开发建议
+
+    这个类提供了与 LLM 交互的统一接口。
+
+    工作原理（简单理解）
+    ------------------
+
+    就像与 AI 助手对话：
+
+    1. **初始化连接**：创建 LLM 客户端连接（就像连接 AI 助手）
+    2. **配置角色**：设置系统提示词，定义助手角色（就像告诉助手它的职责）
+    3. **发送消息**：将用户消息和历史对话发送给 LLM（就像提问）
+    4. **接收回答**：接收 LLM 生成的回答（就像收到回答）
+
+    实际使用场景
+    -----------
+
+    发送聊天消息并获取回答：
+
+    ```python
+    llm = LLMService()
+    messages = [Message(role="user", content="如何计算动量因子？")]
+    response = await llm.chat_completion(messages)
+    ```
+
+    注意事项
+    --------
+
+    - 使用 OpenAI 兼容的 API，支持 DeepSeek 等模型
+    - 系统提示词限制模型只能回答因子开发相关问题
+    - 所有回答都使用中文
+    - 支持流式和非流式两种响应模式
+    """
     def __init__(self):
-        # Initialize OpenAI client with API key from config
+        """初始化 LLM 服务
+
+        这个函数就像"启动 AI 助手"，它会：
+        - 从配置中读取 API 密钥、模型和基础 URL
+        - 创建 OpenAI 客户端连接
+        - 配置系统提示词，定义助手角色
+
+        为什么需要系统提示词？
+        --------------------
+
+        系统提示词定义了 AI 助手的角色和行为：
+        - 限制助手只能回答因子开发相关问题
+        - 确保所有回答都使用中文
+        - 提供因子开发的知识和示例
+
+        工作原理
+        --------
+
+        1. **读取配置**：从配置中读取 LLM 相关配置
+        2. **创建客户端**：创建 OpenAI 兼容的客户端
+        3. **配置提示词**：设置系统提示词，定义助手角色
+
+        Raises:
+            Exception: 如果配置缺失或客户端创建失败，会抛出异常
+
+        Example:
+            >>> llm = LLMService()
+        """
+        # 从配置中读取 LLM 相关配置
         config = get_config()
-        self.api_key = config.get("LLM_API_KEY")
-        self.model = config.get("LLM_MODEL")
-        self.base_url = config.get("LLM_BASE_URL")
+        self.api_key = config.get("LLM_API_KEY")  # API 密钥
+        self.model = config.get("LLM_MODEL")  # 模型名称
+        self.base_url = config.get("LLM_BASE_URL")  # API 基础 URL
         
+        # 创建 OpenAI 兼容的客户端（支持 DeepSeek 等模型）
         self.client = openai.OpenAI(
             api_key=self.api_key,
             base_url=self.base_url
         )
         
         # 定义系统提示词，限制模型只能作为因子开发助手
+        # 这个提示词定义了助手的角色、能力和行为规范
         self.system_message = {
             "role": "system",
             "content": """You are PandaAI Factor Development Assistant, a specialized AI designed to help with quantitative factor development and optimization.
@@ -131,7 +249,30 @@ For all questions unrelated to factor development, I will politely remind users 
         }
 
     def _prepare_messages(self, messages):
-        """转换消息格式以适配 OpenAI API"""
+        """转换消息格式以适配 OpenAI API
+
+        这个函数将内部消息格式转换为 OpenAI API 需要的格式。
+        它会添加系统提示词，并转换消息对象为字典格式。
+
+        为什么需要这个函数？
+        --------------------
+
+        OpenAI API 需要特定格式的消息：
+        - 需要包含系统提示词
+        - 消息需要是字典格式，包含 role 和 content
+
+        这个函数提供了格式转换的功能。
+
+        Args:
+            messages: 消息列表，可以是 Message 对象或字典格式
+
+        Returns:
+            list: 格式化后的消息列表，包含系统提示词和用户消息
+
+        Example:
+            >>> messages = [Message(role="user", content="你好")]
+            >>> formatted = llm._prepare_messages(messages)
+        """
         formatted_messages = []
         
         # 添加系统提示词
@@ -155,7 +296,34 @@ For all questions unrelated to factor development, I will politely remind users 
         return formatted_messages
 
     async def chat_completion(self, messages) -> str:
-        """发送聊天请求到 OpenAI API"""
+        """发送聊天请求到 OpenAI API（非流式）
+
+        这个函数发送聊天请求到 LLM，并等待完整回答返回。
+        适用于不需要实时响应的场景。
+
+        为什么需要这个函数？
+        --------------------
+
+        有些场景不需要流式响应：
+        - 简单的问答场景
+        - 不需要实时显示回答
+        - 需要等待完整回答后再处理
+
+        这个函数提供了非流式的聊天完成功能。
+
+        Args:
+            messages: 消息列表，包含对话历史
+
+        Returns:
+            str: LLM 生成的完整回答
+
+        Raises:
+            Exception: 如果 API 调用失败，会抛出异常
+
+        Example:
+            >>> messages = [Message(role="user", content="如何计算动量因子？")]
+            >>> response = await llm.chat_completion(messages)
+        """
         try:
             # 格式化消息
             formatted_messages = self._prepare_messages(messages)
@@ -175,7 +343,35 @@ For all questions unrelated to factor development, I will politely remind users 
             raise
 
     async def chat_completion_stream(self, messages):
-        """发送流式聊天请求到 OpenAI API"""
+        """发送流式聊天请求到 OpenAI API
+
+        这个函数发送聊天请求到 LLM，并以流式方式返回回答。
+        适用于需要实时显示回答的场景，提供更好的用户体验。
+
+        为什么需要这个函数？
+        --------------------
+
+        流式响应提供更好的用户体验：
+        - 用户可以实时看到回答生成过程
+        - 不需要等待完整回答，响应更快
+        - 提供类似 ChatGPT 的交互体验
+
+        这个函数提供了流式的聊天完成功能。
+
+        Args:
+            messages: 消息列表，包含对话历史
+
+        Yields:
+            str: LLM 生成的回答片段（逐个 token）
+
+        Raises:
+            Exception: 如果 API 调用失败，会抛出异常
+
+        Example:
+            >>> messages = [Message(role="user", content="如何计算动量因子？")]
+            >>> async for chunk in llm.chat_completion_stream(messages):
+            ...     print(chunk, end='')
+        """
         try:
             # 格式化消息
             formatted_messages = self._prepare_messages(messages)

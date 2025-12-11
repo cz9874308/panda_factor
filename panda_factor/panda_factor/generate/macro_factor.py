@@ -1,4 +1,54 @@
-# factors.py
+"""
+因子管理模块
+
+本模块提供了一个因子管理类 `MacroFactor`，它负责从公式或 Python 类创建因子。
+就像一个"因子工厂"，它能够：
+- 从公式表达式创建因子（如 "close / open - 1"）
+- 从 Python 类创建因子（继承自 Factor 基类）
+- 验证因子代码的安全性
+- 提供详细的错误信息
+
+核心概念
+--------
+
+- **公式因子**：使用公式表达式定义的因子，如 "close / open - 1"
+- **类因子**：使用 Python 类定义的因子，继承自 Factor 基类
+- **安全验证**：检查因子代码是否包含危险操作（如文件操作、系统调用等）
+- **错误处理**：提供详细的错误信息，帮助用户快速定位问题
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，用户需要创建各种因子：
+- 简单因子：可以用公式表达式快速定义
+- 复杂因子：需要用 Python 类实现复杂逻辑
+
+如果直接执行用户代码，会有安全风险：
+- 可能执行危险操作（如删除文件、访问网络等）
+- 可能访问敏感数据
+- 可能影响系统稳定性
+
+这个模块通过安全验证和错误处理，解决了这些问题。
+
+工作原理（简单理解）
+------------------
+
+就像工厂的生产流程：
+
+1. **接收订单**：接收因子定义（公式或类代码）
+2. **安全检查**：检查代码是否安全（就像检查原材料是否合格）
+3. **准备材料**：获取需要的基础因子数据（就像准备生产材料）
+4. **执行生产**：执行因子计算（就像按照流程生产）
+5. **质量检查**：验证计算结果（就像检查产品质量）
+6. **返回产品**：返回因子数据（就像发货）
+
+注意事项
+--------
+
+- 公式因子使用 eval 执行，需要确保公式安全
+- 类因子需要继承 Factor 基类，实现 calculate 方法
+- 所有危险操作（如文件操作、系统调用）都会被阻止
+"""
 
 import pandas as pd
 import numpy as np
@@ -17,7 +67,77 @@ from typing import Optional, List, Set, Dict, Any
 
 
 class MacroFactor:
-    """Factor management class, responsible for factor creation and validation"""
+    """因子管理类
+
+    这个类就像一个"因子工厂"，它负责从公式或 Python 类创建因子。
+    它提供了安全验证、错误处理和因子计算的功能。
+
+    为什么需要这个类？
+    -----------------
+
+    在量化分析中，用户需要创建各种因子：
+    - 简单因子：可以用公式表达式快速定义
+    - 复杂因子：需要用 Python 类实现复杂逻辑
+
+    如果直接执行用户代码，会有安全风险：
+    - 可能执行危险操作（如删除文件、访问网络等）
+    - 可能访问敏感数据
+    - 可能影响系统稳定性
+
+    这个类通过安全验证和错误处理，解决了这些问题。
+
+    工作原理（简单理解）
+    ------------------
+
+    就像工厂的生产流程：
+
+    1. **接收订单**：接收因子定义（公式或类代码）
+    2. **安全检查**：检查代码是否安全（就像检查原材料是否合格）
+    3. **准备材料**：获取需要的基础因子数据（就像准备生产材料）
+    4. **执行生产**：执行因子计算（就像按照流程生产）
+    5. **质量检查**：验证计算结果（就像检查产品质量）
+    6. **返回产品**：返回因子数据（就像发货）
+
+    实际使用场景
+    -----------
+
+    从公式创建因子：
+
+    ```python
+    macro_factor = MacroFactor()
+    result = macro_factor.create_factor_from_formula(
+        factor_logger=logger,
+        formula="close / open - 1",
+        start_date="20240101",
+        end_date="20241231",
+        symbols=["000001"]
+    )
+    ```
+
+    从类创建因子：
+
+    ```python
+    class_code = '''
+    class MyFactor(Factor):
+        def calculate(self, factors):
+            close = factors['close']
+            return self.RETURNS(close)
+    '''
+    result = macro_factor.create_factor_from_class(
+        factor_logger=logger,
+        class_code=class_code,
+        start_date="20240101",
+        end_date="20241231"
+    )
+    ```
+
+    注意事项
+    --------
+
+    - 公式因子使用 eval 执行，需要确保公式安全
+    - 类因子需要继承 Factor 基类，实现 calculate 方法
+    - 所有危险操作（如文件操作、系统调用）都会被阻止
+    """
 
     def _log_error_context(self, error, code, logger):
         """Helper function to log detailed error context"""
@@ -294,9 +414,28 @@ class MacroFactor:
     }
 
     def __init__(self):
-        """Initialize factor calculator"""
+        """初始化因子管理器
+
+        这个函数就像"启动因子工厂"，它会：
+        - 创建数据提供者（用于获取基础因子数据）
+        - 创建数据处理者（用于处理因子数据）
+        - 初始化基础因子缓存
+
+        工作原理
+        --------
+
+        1. **创建数据提供者**：创建 PandaDataProvider 实例，用于从数据库获取数据
+        2. **创建数据处理者**：创建 FactorDataHandler 实例，用于处理因子数据
+        3. **初始化缓存**：将 base_factors 设置为 None，后续会缓存获取的基础因子
+
+        Example:
+            >>> macro_factor = MacroFactor()
+        """
+        # 数据提供者：负责从数据库获取基础因子数据
         self.data_provider = PandaDataProvider()
+        # 数据处理者：负责处理因子数据（如格式化、验证等）
         self.data_handler = FactorDataHandler(self.data_provider)
+        # 基础因子缓存：缓存已获取的基础因子数据，避免重复查询
         self.base_factors = None
 
     def _is_safe_name(self, name: str) -> bool:
@@ -426,7 +565,97 @@ class MacroFactor:
                                    end_date: str, symbols: Optional[List[str]] = None,
                                    index_component: Optional[str] = None, symbol_type: Optional[str] = 'stock') -> \
     Optional[pd.DataFrame]:
-        """Create factor from formula"""
+        """从公式创建因子
+
+        这个函数就像一个"公式计算器"，它会解析公式表达式，执行计算，并返回因子数据。
+
+        为什么需要这个函数？
+        --------------------
+
+        在量化分析中，很多因子可以用简单的公式表达：
+        - 收益率：close / open - 1
+        - 波动率：STDDEV(RETURNS(close), 20)
+        - 动量：SUM(RETURNS(close), 20)
+
+        如果每个因子都要写 Python 类，会很繁琐。
+        这个函数允许用户直接用公式定义因子，大大简化了因子创建过程。
+
+        工作原理（简单理解）
+        ------------------
+
+        就像计算器：
+
+        1. **解析公式**：提取公式中需要的因子名称（就像识别公式中的变量）
+        2. **获取数据**：从数据库获取需要的基础因子数据（就像获取变量的值）
+        3. **准备环境**：创建计算环境，包含所有可用的函数和因子数据（就像准备计算器）
+        4. **执行计算**：使用 eval 执行公式（就像按计算器）
+        5. **处理结果**：格式化计算结果并返回（就像显示结果）
+
+        实际使用场景
+        -----------
+
+        创建简单的收益率因子：
+
+        ```python
+        result = macro_factor.create_factor_from_formula(
+            factor_logger=logger,
+            formula="close / open - 1",
+            start_date="20240101",
+            end_date="20241231"
+        )
+        ```
+
+        创建复杂的动量因子：
+
+        ```python
+        result = macro_factor.create_factor_from_formula(
+            factor_logger=logger,
+            formula="SUM(RETURNS(close), 20)",
+            start_date="20240101",
+            end_date="20241231"
+        )
+        ```
+
+        可能遇到的问题
+        ------------
+
+        公式语法错误
+        ^^^^^^^^^^^
+
+        如果公式有语法错误，会抛出 SyntaxError 异常。
+        检查公式的语法是否正确。
+
+        缺少基础因子
+        ^^^^^^^^^^^
+
+        如果公式中使用的因子不存在，会抛出 ValueError 异常。
+        确保公式中使用的因子名称正确。
+
+        Args:
+            factor_logger: 日志记录器，用于记录因子计算过程中的日志
+            formula: 公式字符串，如 "close / open - 1" 或 "SUM(RETURNS(close), 20)"
+            start_date: 开始日期，格式 YYYYMMDD
+            end_date: 结束日期，格式 YYYYMMDD
+            symbols: 股票代码列表，如果为 None 则返回所有股票
+            index_component: 指数成分股过滤，如 "100"（沪深300）
+            symbol_type: 数据类型，'stock' 表示股票，'future' 表示期货
+
+        Returns:
+            Optional[pd.DataFrame]: 因子数据 DataFrame，索引为 (date, symbol) 多级索引
+                                    如果计算失败，返回 None
+
+        Raises:
+            ValueError: 如果公式格式错误或缺少基础因子
+            SyntaxError: 如果公式有语法错误
+
+        Example:
+            >>> result = macro_factor.create_factor_from_formula(
+            ...     factor_logger=logger,
+            ...     formula="close / open - 1",
+            ...     start_date="20240101",
+            ...     end_date="20241231"
+            ... )
+        """
         print("\n=== Starting formula execution ===")
         print(f"Formula: {formula}")
 
@@ -626,7 +855,105 @@ class MacroFactor:
                                  end_date: str, symbols: Optional[List[str]] = None,
                                  index_component: Optional[str] = None, symbol_type: Optional[str] = 'stock') -> \
     Optional[pd.DataFrame]:
-        """Create factor from class"""
+        """从 Python 类创建因子
+
+        这个函数就像一个"类因子编译器"，它会解析 Python 类代码，创建因子实例，
+        执行计算，并返回因子数据。
+
+        为什么需要这个函数？
+        --------------------
+
+        在量化分析中，有些因子需要复杂的逻辑：
+        - 多步骤计算
+        - 条件判断
+        - 循环处理
+        - 自定义函数
+
+        这些复杂逻辑无法用简单公式表达，需要用 Python 类实现。
+        这个函数允许用户用 Python 类定义因子，提供了最大的灵活性。
+
+        工作原理（简单理解）
+        ------------------
+
+        就像编译和执行程序：
+
+        1. **解析代码**：使用 AST 解析 Python 代码（就像编译源代码）
+        2. **安全检查**：检查代码是否包含危险操作（就像检查代码安全性）
+        3. **加载类**：动态加载因子类（就像加载编译后的程序）
+        4. **创建实例**：创建因子实例（就像创建程序实例）
+        5. **获取数据**：从数据库获取需要的基础因子数据（就像准备输入数据）
+        6. **执行计算**：调用 calculate 方法计算因子（就像执行程序）
+        7. **处理结果**：格式化计算结果并返回（就像处理输出）
+
+        实际使用场景
+        -----------
+
+        创建复杂的动量因子：
+
+        ```python
+        class_code = '''
+        class MomentumFactor(Factor):
+            def calculate(self, factors):
+                close = factors['close']
+                returns = self.RETURNS(close)
+                momentum = self.SUM(returns, window=20)
+                return momentum
+        '''
+        result = macro_factor.create_factor_from_class(
+            factor_logger=logger,
+            class_code=class_code,
+            start_date="20240101",
+            end_date="20241231"
+        )
+        ```
+
+        可能遇到的问题
+        ------------
+
+        代码语法错误
+        ^^^^^^^^^^^
+
+        如果代码有语法错误，会记录详细的错误信息到日志，并返回 None。
+        检查代码的语法是否正确。
+
+        安全验证失败
+        ^^^^^^^^^^^
+
+        如果代码包含危险操作（如文件操作、系统调用），会记录错误信息并返回 None。
+        确保代码不包含危险操作。
+
+        缺少基础因子
+        ^^^^^^^^^^^
+
+        如果代码中使用的因子不存在，会记录错误信息并返回 None。
+        确保代码中使用的因子名称正确。
+
+        Args:
+            factor_logger: 日志记录器，用于记录因子计算过程中的日志
+            class_code: Python 类代码字符串，必须包含继承自 Factor 的类
+            start_date: 开始日期，格式 YYYYMMDD
+            end_date: 结束日期，格式 YYYYMMDD
+            symbols: 股票代码列表，如果为 None 则返回所有股票
+            index_component: 指数成分股过滤，如 "100"（沪深300）
+            symbol_type: 数据类型，'stock' 表示股票，'future' 表示期货
+
+        Returns:
+            Optional[pd.DataFrame]: 因子数据 DataFrame，索引为 (date, symbol) 多级索引
+                                    如果计算失败，返回 None
+
+        Example:
+            >>> class_code = '''
+            ... class MyFactor(Factor):
+            ...     def calculate(self, factors):
+            ...         return self.RETURNS(factors['close'])
+            ... '''
+            >>> result = macro_factor.create_factor_from_class(
+            ...     factor_logger=logger,
+            ...     class_code=class_code,
+            ...     start_date="20240101",
+            ...     end_date="20241231"
+            ... )
+        """
         from .factor_loader import FactorLoader
 
         # Parse code and check safety

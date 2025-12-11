@@ -1,3 +1,44 @@
+"""
+XtQuant 数据下载服务模块
+
+本模块提供了从 XtQuant 数据源下载数据的服务。
+它会从 XtQuant 下载股票的价格数据，并存储到本地或数据库。
+
+核心概念
+--------
+
+- **数据下载**：从 XtQuant 下载股票价格数据
+- **进度回调**：支持进度更新回调，实时显示下载进度
+- **单线程下载**：使用单线程顺序下载，避免 API 调用频率限制
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，需要从 XtQuant 下载数据：
+- XtQuant 提供了丰富的历史数据
+- 需要下载并保存数据供后续使用
+- 下载过程可能较长，需要进度反馈
+
+这个模块提供了从 XtQuant 下载数据的能力。
+
+工作原理（简单理解）
+------------------
+
+就像下载文件：
+
+1. **连接数据源**：初始化 XtQuant 连接
+2. **获取股票列表**：获取要下载的股票列表
+3. **逐个下载**：按顺序下载每只股票的数据
+4. **保存数据**：将下载的数据保存到指定位置
+
+注意事项
+--------
+
+- 使用单线程顺序下载，避免 API 调用频率限制
+- 下载过程可能较长，建议使用进度回调显示进度
+- 需要 XtQuant 的认证信息（在 config 中配置）
+"""
+
 import traceback
 from abc import ABC
 from xtquant import xtdata
@@ -7,6 +48,38 @@ from panda_data_hub.utils.xt_utils import XTQuantManager
 
 
 class XTDownloadService(ABC):
+    """XtQuant 数据下载服务
+
+    这个类提供了从 XtQuant 数据源下载数据的功能。
+    就像一个"数据下载器"，它会从 XtQuant 下载数据并保存。
+
+    为什么需要这个类？
+    -----------------
+
+    在量化分析中，需要从 XtQuant 下载数据：
+    - XtQuant 提供了丰富的历史数据
+    - 需要下载并保存数据供后续使用
+    - 下载过程可能较长，需要进度反馈
+
+    这个类提供了从 XtQuant 下载数据的能力。
+
+    实际使用场景
+    -----------
+
+    下载一年的股票价格数据：
+
+    ```python
+    service = XTDownloadService(config)
+    service.xt_price_data_download("2024-01-01", "2024-12-31")
+    ```
+
+    注意事项
+    --------
+
+    - 使用单线程顺序下载，避免 API 调用频率限制
+    - 下载过程可能较长，建议使用进度回调显示进度
+    - 需要 XtQuant 的认证信息（在 config 中配置）
+    """
     def __init__(self,config):
         self.config = config
         self.progress_callback = None

@@ -1,3 +1,50 @@
+"""
+因子分析模块
+
+本模块提供了因子分析的核心功能，它会对因子进行全面的分析，包括：
+- 数据清洗（异常值处理、标准化）
+- 因子分组（将股票按因子值分成多组）
+- 回测分析（计算各组的收益率、IC、IR等指标）
+- 结果保存（将分析结果保存到数据库）
+
+核心概念
+--------
+
+- **因子分析**：评估因子的有效性和预测能力
+- **因子分组**：将股票按因子值分成多组，分析不同组的收益表现
+- **回测**：使用历史数据模拟交易，评估因子策略的表现
+- **IC/IR**：信息系数和信息比率，衡量因子的预测能力
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，创建因子后需要评估其有效性：
+- 因子是否具有预测能力？
+- 因子值高的股票是否收益更高？
+- 因子的稳定性如何？
+
+这个模块提供了完整的因子分析流程，帮助用户评估因子的质量。
+
+工作原理（简单理解）
+------------------
+
+就像评估一个投资策略：
+
+1. **准备数据**：获取市场数据和因子数据（就像准备历史数据）
+2. **清洗数据**：处理异常值和缺失值（就像清理数据）
+3. **合并数据**：将市场数据和因子数据合并（就像整合数据）
+4. **分组分析**：将股票按因子值分成多组（就像将股票分类）
+5. **回测计算**：计算各组的收益率和指标（就像模拟交易）
+6. **保存结果**：将分析结果保存到数据库（就像记录结果）
+
+注意事项
+--------
+
+- 分析过程可能需要较长时间，特别是数据量大的时候
+- 分析结果会保存到数据库，可以通过 task_id 查询
+- 分析过程中的状态会实时更新到数据库
+"""
+
 import numpy as np
 import pandas as pd
 import warnings
@@ -17,16 +64,126 @@ from datetime import datetime
 
 def factor_analysis(df_factor: pd.DataFrame, params: Params, factor_id: str = "", task_id: str = "",
                     logger=logging.Logger) -> None:
-    """
-    Factor Analysis Function
+    """因子分析函数
 
-    Parameters:
-    - df_factor: Factor data in DataFrame format
-    - params: Analysis parameters, including rebalancing period, stock pool, etc.
-    - factor_id: Factor ID, optional
+    这个函数是因子分析的核心，它会执行完整的因子分析流程，包括数据清洗、分组、回测等。
+    就像一个"因子评估系统"，它会全面评估因子的有效性和预测能力。
+
+    为什么需要这个函数？
+    --------------------
+
+    在量化分析中，创建因子后需要评估其有效性：
+    - 因子是否具有预测能力？
+    - 因子值高的股票是否收益更高？
+    - 因子的稳定性如何？
+
+    这个函数提供了完整的因子分析流程，帮助用户评估因子的质量。
+
+    工作原理（简单理解）
+    ------------------
+
+    就像评估一个投资策略：
+
+    1. **准备数据**：获取市场数据和因子数据（就像准备历史数据）
+    2. **清洗数据**：处理异常值和缺失值（就像清理数据）
+    3. **合并数据**：将市场数据和因子数据合并（就像整合数据）
+    4. **分组分析**：将股票按因子值分成多组（就像将股票分类）
+    5. **回测计算**：计算各组的收益率和指标（就像模拟交易）
+    6. **保存结果**：将分析结果保存到数据库（就像记录结果）
+
+    分析流程
+    --------
+
+    1. **初始化**：更新任务状态为"已开始"
+    2. **获取K线数据**：从数据库获取市场数据
+    3. **清洗因子数据**：处理异常值和标准化
+    4. **合并数据**：将市场数据和因子数据合并
+    5. **计算滞后收益**：计算未来收益率
+    6. **因子分组**：将股票按因子值分成多组
+    7. **回测分析**：计算各组的收益率、IC、IR等指标
+    8. **保存结果**：将分析结果保存到数据库
+
+    实际使用场景
+    -----------
+
+    分析一个动量因子：
+
+    ```python
+    from panda_common.models.factor_analysis_params import Params
+
+    params = Params(
+        start_date="2024-01-01",
+        end_date="2024-12-31",
+        stock_pool="000985",
+        include_st=True,
+        adjustment_cycle=5,
+        factor_direction=1,
+        group_number=10,
+        extreme_value_processing="标准差"
+    )
+
+    factor_analysis(
+        df_factor=factor_data,
+        params=params,
+        factor_id="factor_123",
+        task_id="task_456",
+        logger=logger
+    )
+    ```
+
+    可能遇到的问题
+    ------------
+
+    数据获取失败
+    ^^^^^^^^^^^
+
+    如果市场数据获取失败，会抛出异常并更新任务状态为失败。
+    检查数据库连接和数据是否存在。
+
+    因子数据异常
+    ^^^^^^^^^^^
+
+    如果因子数据有异常（如全为NaN），会在清洗阶段处理。
+    检查因子计算是否正确。
+
+    Args:
+        df_factor: 因子数据 DataFrame，必须包含 date、symbol 和因子值列
+        params: 分析参数对象，包含：
+            - start_date: 开始日期
+            - end_date: 结束日期
+            - stock_pool: 股票池代码
+            - include_st: 是否包含ST股票
+            - adjustment_cycle: 调仓周期（天数）
+            - factor_direction: 因子方向（0表示因子值越小越好，1表示因子值越大越好）
+            - group_number: 分组数量（默认10组）
+            - extreme_value_processing: 异常值处理方法（"标准差"或"中位数"）
+        factor_id: 因子ID，用于关联因子信息（可选）
+        task_id: 任务ID，用于跟踪分析进度（必需）
+        logger: 日志记录器，用于记录分析过程中的日志
 
     Returns:
-    - None: Analysis results will be saved to the appropriate location
+        None: 分析结果会保存到数据库，不直接返回
+
+    Raises:
+        Exception: 如果分析过程中出现错误，会更新任务状态为失败并抛出异常
+
+    Example:
+        >>> from panda_common.models.factor_analysis_params import Params
+        >>> params = Params(
+        ...     start_date="2024-01-01",
+        ...     end_date="2024-12-31",
+        ...     stock_pool="000985",
+        ...     include_st=True,
+        ...     adjustment_cycle=5,
+        ...     factor_direction=1,
+        ...     group_number=10
+        ... )
+        >>> factor_analysis(
+        ...     df_factor=factor_data,
+        ...     params=params,
+        ...     task_id="task_123",
+        ...     logger=logger
+        ... )
     """
     warnings.filterwarnings("ignore")
 

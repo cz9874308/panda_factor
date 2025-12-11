@@ -1,3 +1,45 @@
+"""
+用户因子服务模块
+
+本模块提供了用户因子相关的所有业务逻辑，包括：
+- 因子管理（创建、查询、更新、删除）
+- 因子分析（运行分析、查询状态、查询结果）
+- 图表数据查询（各种分析图表的数据处理）
+
+核心概念
+--------
+
+- **因子管理**：用户因子的 CRUD 操作和验证
+- **因子分析**：运行因子分析任务，评估因子有效性
+- **图表数据**：处理分析结果，为前端图表提供格式化数据
+
+为什么需要这个模块？
+-------------------
+
+在 Web 应用中，需要将业务逻辑与路由分离：
+- 路由层只负责接收请求和返回响应
+- 服务层负责处理业务逻辑和数据操作
+- 这样可以让代码更清晰、更易维护
+
+这个模块统一管理所有因子相关的业务逻辑，提供了清晰的接口。
+
+工作原理（简单理解）
+------------------
+
+就像餐厅的厨房：
+
+1. **接收订单**：接收路由层传来的请求（就像接收点餐单）
+2. **处理业务**：执行业务逻辑（就像准备菜品）
+3. **返回结果**：将处理结果返回给路由层（就像出菜）
+
+注意事项
+--------
+
+- 所有函数都是同步函数，由路由层的异步函数调用
+- 错误处理使用 HTTPException 抛出，由 FastAPI 统一处理
+- 数据库操作使用全局的 _db_handler 实例
+"""
+
 import numpy as np
 import logging
 
@@ -21,12 +63,35 @@ from panda_common.models.factor_analysis_params import Params
 from typing import Tuple, Optional
 
 # 全局变量，替代类实例变量
-_config = config
-_db_handler = DatabaseHandler(config)
-panda_data.init()
+# 使用全局变量而不是类实例，简化函数调用，避免需要创建服务类实例
+_config = config  # 配置对象
+_db_handler = DatabaseHandler(config)  # 数据库处理器
+panda_data.init()  # 初始化数据读取模块
 
 def validate_object_id(factor_id: str) -> ObjectId:
-    """验证并转换ObjectId"""
+    """验证并转换ObjectId
+
+    这个函数用于验证因子ID的格式是否正确，并转换为 MongoDB 的 ObjectId 对象。
+
+    为什么需要这个函数？
+    --------------------
+
+    MongoDB 使用 ObjectId 作为文档的唯一标识符。
+    如果用户传入的因子ID格式不正确，会导致查询失败。
+    这个函数提前验证格式，提供更友好的错误信息。
+
+    Args:
+        factor_id: 因子ID字符串
+
+    Returns:
+        ObjectId: MongoDB ObjectId 对象
+
+    Raises:
+        HTTPException: 如果因子ID格式无效，返回400错误
+
+    Example:
+        >>> obj_id = validate_object_id("507f1f77bcf86cd799439011")
+    """
     try:
         return ObjectId(factor_id)
     except Exception:
@@ -34,18 +99,63 @@ def validate_object_id(factor_id: str) -> ObjectId:
         raise HTTPException(status_code=400, detail="无效的因子ID格式")
 
 def check_factor_exists(user_id: str, factor_name: str, exclude_id: str = None) -> bool:
-    """检查因子是否存在"""
+    """检查因子是否存在
+
+    这个函数用于检查指定用户是否已经存在同名的因子。
+
+    为什么需要这个函数？
+    --------------------
+
+    在创建或更新因子时，需要确保因子名称不重复：
+    - 同一用户不能有重复的因子名称
+    - 更新因子时可以排除当前因子ID
+
+    这个函数提供了检查因子是否存在的功能。
+
+    Args:
+        user_id: 用户ID
+        factor_name: 因子名称
+        exclude_id: 要排除的因子ID（用于更新时检查，可选）
+
+    Returns:
+        bool: 如果因子存在返回 True，否则返回 False
+
+    Example:
+        >>> exists = check_factor_exists("user_123", "my_factor")
+    """
     query = {"user_id": user_id, "factor_name": factor_name}
     if exclude_id:
-        query["_id"] = {"$ne": ObjectId(exclude_id)}
+        query["_id"] = {"$ne": ObjectId(exclude_id)}  # 排除指定ID
     return bool(_db_handler.mongo_find_one("panda", "user_factors", query))
 
 
 def format_duration(seconds):
-    """将秒数格式化为可读的时间格式"""
+    """将秒数格式化为可读的时间格式
+
+    这个函数将秒数转换为人类可读的时间格式，如 "1小时30分钟20秒"。
+
+    为什么需要这个函数？
+    --------------------
+
+    在显示任务执行时间时，直接显示秒数不够直观。
+    这个函数将秒数转换为更易读的格式，提升用户体验。
+
+    Args:
+        seconds: 秒数（可以是浮点数）
+
+    Returns:
+        str: 格式化后的时间字符串，如 "1小时30分钟20秒"
+
+    Example:
+        >>> format_duration(3661)
+        '1小时1分钟1秒'
+        >>> format_duration(30)
+        '30秒'
+    """
     if seconds < 0:
         return "0秒"
 
+    # 将秒数转换为小时、分钟、秒
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
 
@@ -54,13 +164,23 @@ def format_duration(seconds):
         result.append(f"{int(hours)}小时")
     if minutes > 0:
         result.append(f"{int(minutes)}分钟")
-    if seconds > 0 or not result:
+    if seconds > 0 or not result:  # 如果没有小时和分钟，至少显示秒
         result.append(f"{int(seconds)}秒")
 
     return "".join(result)
 
 
 def hello():
+    """测试函数
+
+    这个函数用于测试服务是否正常运行。
+
+    Returns:
+        ResultData: 包含 "hello" 消息的成功结果
+
+    Example:
+        >>> result = hello()
+    """
     return ResultData.success("hello")
 
 
@@ -71,14 +191,60 @@ def get_user_factor_list(
     sort_field: str = "created_at",
     sort_order: str = "desc"
 ):
-    """
-    获取用户因子列表
-    :param user_id: 用户ID
-    :param page: 页码，从1开始
-    :param page_size: 每页数量，默认10，最大100
-    :param sort_field: 排序字段
-    :param sort_order: 排序方式，asc或desc
-    :return: 因子列表，包含基本信息和性能指标
+    """获取用户因子列表
+
+    这个函数就像一个"因子目录管理器"，它会查询指定用户的所有因子，
+    支持分页和排序，并包含每个因子的性能指标。
+
+    为什么需要这个函数？
+    --------------------
+
+    用户可能有多个因子，需要：
+    - 查看所有因子
+    - 按不同条件排序（如按创建时间、收益率、IC等）
+    - 分页浏览，避免一次性加载太多数据
+    - 查看每个因子的性能指标（收益率、IC、IR等）
+
+    这个函数提供了这些功能。
+
+    工作原理
+    --------
+
+    1. 验证排序参数
+    2. 查询用户的所有因子
+    3. 获取总记录数，计算总页数
+    4. 根据排序字段和排序方式排序
+    5. 分页查询数据
+    6. 为每个因子查询最新的分析结果，获取性能指标
+    7. 格式化返回结果
+
+    Args:
+        user_id: 用户ID，用于查询该用户的因子
+        page: 页码，从1开始，默认1
+        page_size: 每页数量，默认10，最大100
+        sort_field: 排序字段，支持：
+            - created_at: 创建时间
+            - return_ratio: 收益率
+            - sharpe_ratio: 夏普比率
+            - maximum_drawdown: 最大回撤
+            - IC: 信息系数
+            - IR: 信息比率
+        sort_order: 排序方式，'asc' 表示升序，'desc' 表示降序（默认）
+
+    Returns:
+        ResultData: 包含因子列表和分页信息的结果对象
+
+    Raises:
+        HTTPException: 如果排序参数无效，返回400错误
+
+    Example:
+        >>> result = get_user_factor_list(
+        ...     user_id="user_123",
+        ...     page=1,
+        ...     page_size=10,
+        ...     sort_field="return_ratio",
+        ...     sort_order="desc"
+        ... )
     """
     try:
         # 验证排序参数
@@ -211,19 +377,62 @@ def get_user_factor_list(
 
 
 def create_factor(factor: CreateFactorRequest):
+    """创建因子
+
+    这个函数就像一个"因子工厂"，它会根据用户提供的因子定义创建新因子并保存到数据库。
+
+    为什么需要这个函数？
+    --------------------
+
+    用户需要创建自己的因子：
+    - 定义因子代码（公式或Python类）
+    - 设置因子参数（股票池、调仓周期等）
+    - 保存因子定义到数据库
+
+    这个函数提供了创建因子的完整流程。
+
+    工作原理
+    --------
+
+    1. 检查因子名称是否已存在（同一用户不能有重复的因子名称）
+    2. 准备因子数据，添加创建时间和更新时间
+    3. 将因子保存到数据库
+    4. 返回创建结果和因子ID
+
+    Args:
+        factor: 因子创建请求对象，包含：
+            - user_id: 用户ID
+            - factor_name: 因子名称
+            - code: 因子代码（公式或Python类）
+            - code_type: 代码类型（'formula' 或 'python'）
+            - params: 因子参数
+
+    Returns:
+        ResultData: 创建结果，包含因子ID或错误信息
+
+    Example:
+        >>> factor_request = CreateFactorRequest(
+        ...     user_id="user_123",
+        ...     factor_name="my_factor",
+        ...     code="close / open - 1",
+        ...     code_type="formula",
+        ...     params={...}
+        ... )
+        >>> result = create_factor(factor_request)
+    """
     try:
-        # 检查因子是否已存在
+        # 检查因子是否已存在（同一用户不能有重复的因子名称）
         if check_factor_exists(factor.user_id, factor.factor_name):
             return ResultData.fail("409", "同名因子已存在")
 
-        # 准备数据
+        # 准备数据：将请求对象转换为字典，并添加时间戳
         factor_dict = factor.dict()
         factor_dict.update({
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat()
         })
 
-        # 创建因子
+        # 创建因子：将因子数据插入到数据库
         result = _db_handler.mongo_insert_many("panda", "user_factors", [factor_dict])
 
         if result and len(result) > 0:
@@ -238,9 +447,27 @@ def create_factor(factor: CreateFactorRequest):
         return ResultData.fail("500", f"创建因子失败: {str(e)}")
 
 def delete_factor(factor_id: str):
+    """删除因子
+
+    这个函数用于删除指定的因子。
+
+    Args:
+        factor_id: 因子ID
+
+    Returns:
+        ResultData: 删除结果，包含成功或失败信息
+
+    Raises:
+        HTTPException: 如果因子ID格式无效，返回400错误
+
+    Example:
+        >>> result = delete_factor("507f1f77bcf86cd799439011")
+    """
     try:
+        # 验证并转换因子ID
         object_id = validate_object_id(factor_id)
 
+        # 从数据库删除因子
         result = _db_handler.mongo_delete(
             "panda",
             "user_factors",
@@ -262,7 +489,46 @@ def delete_factor(factor_id: str):
 
 
 def update_factor(factor: CreateFactorRequest, factor_id: str):
+    """更新因子
+
+    这个函数用于更新已存在的因子定义。
+
+    为什么需要这个函数？
+    --------------------
+
+    用户可能需要修改已创建的因子：
+    - 修改因子代码
+    - 修改因子参数
+    - 修改因子名称
+
+    这个函数提供了更新因子的能力。
+
+    工作原理
+    --------
+
+    1. 验证因子ID格式
+    2. 检查因子是否存在
+    3. 检查是否有其他同名因子（排除当前因子）
+    4. 准备更新数据，更新修改时间
+    5. 全量更新因子文档
+    6. 返回更新结果
+
+    Args:
+        factor: 因子更新请求对象，包含新的因子定义
+        factor_id: 因子ID
+
+    Returns:
+        ResultData: 更新结果，包含成功或失败信息
+
+    Raises:
+        HTTPException: 如果因子ID格式无效，返回400错误
+
+    Example:
+        >>> factor_request = CreateFactorRequest(...)
+        >>> result = update_factor(factor_request, "507f1f77bcf86cd799439011")
+    """
     try:
+        # 验证并转换因子ID
         object_id = validate_object_id(factor_id)
 
         # 检查因子是否存在
@@ -270,15 +536,15 @@ def update_factor(factor: CreateFactorRequest, factor_id: str):
             logger.warning(f"Factor with ID {factor_id} not found for update")
             return ResultData.fail("404", "未找到要更新的因子")
 
-        # 检查是否有其他同名因子
+        # 检查是否有其他同名因子（排除当前因子）
         if check_factor_exists(factor.user_id, factor.factor_name, factor_id):
             return ResultData.fail("409", "同名因子已存在")
 
-        # 准备更新数据
+        # 准备更新数据：将请求对象转换为字典，并更新修改时间
         factor_dict = factor.dict()
         factor_dict["updated_at"] = datetime.now().isoformat()
 
-        # 更新因子 - 全量更新所有字段，使用替换文档的方式
+        # 更新因子：全量更新所有字段，使用文档替换的方式
         result = _db_handler.mongo_update(
             "panda",
             "user_factors",
@@ -353,18 +619,59 @@ def query_factor_status(factor_id: str):
         return ResultData.fail("500", f"查询因子状态失败: {str(e)}")
 
 def validate_factor_params(factor: dict, logger: logging.Logger) -> Tuple[bool, str, Optional[Params]]:
-    """
-    验证因子参数
-    
+    """验证因子参数
+
+    这个函数就像一个"参数检查员"，它会验证因子参数是否合法，
+    包括调仓周期、股票池、分组数量、极值处理方法等。
+
+    为什么需要这个函数？
+    --------------------
+
+    在运行因子分析前，需要确保参数合法：
+    - 调仓周期必须在支持的范围内
+    - 股票池必须是有效的代码
+    - 分组数量必须在合理范围内
+    - 因子代码必须通过安全验证
+
+    这个函数提供了完整的参数验证功能。
+
+    工作原理
+    --------
+
+    1. 从因子字典中提取参数
+    2. 转换为 Params 对象
+    3. 验证各个参数是否合法：
+       - 调仓周期：必须在 [1, 3, 5, 10, 20, 30] 中
+       - 股票池：必须是 000300、000905、000852、000985 之一
+       - 分组数量：必须在 2-20 之间
+       - 极值处理方法：必须是"标准差"或"中位数"
+       - 日期：必须有开始日期和结束日期
+    4. 验证因子代码是否安全
+    5. 返回验证结果
+
     Args:
-        factor: 因子信息字典
-        logger: 日志记录器
-    
+        factor: 因子信息字典，包含 params 和 code 字段
+        logger: 日志记录器，用于记录验证过程
+
     Returns:
         Tuple[bool, str, Optional[Params]]:
-        - bool: 验证是否通过
-        - str: 错误信息（如果验证失败）
-        - Optional[Params]: 验证通过后的参数对象
+        - bool: 验证是否通过，True 表示通过，False 表示失败
+        - str: 错误信息（如果验证失败），成功时为空字符串
+        - Optional[Params]: 验证通过后的参数对象，失败时为 None
+
+    Example:
+        >>> factor_dict = {
+        ...     "params": {
+        ...         "start_date": "2024-01-01",
+        ...         "end_date": "2024-12-31",
+        ...         "adjustment_cycle": 5,
+        ...         "stock_pool": "000300",
+        ...         "group_number": 10
+        ...     },
+        ...     "code": "close / open - 1",
+        ...     "code_type": "formula"
+        ... }
+        >>> is_valid, error_msg, params = validate_factor_params(factor_dict, logger)
     """
     # 从factor的param字段中获取日期
     params_dict = factor.get("params", {})
@@ -444,17 +751,59 @@ def validate_factor_params(factor: dict, logger: logging.Logger) -> Tuple[bool, 
         logger.error(error_msg)
         return False, error_msg, None
 
-def run_factor(message_id: str,is_thread: bool):
+def run_factor(message_id: str, is_thread: bool):
+    """运行因子分析
+
+    这个函数就像一个"分析启动器"，它会启动因子分析任务。
+    如果 is_thread=True，分析会在后台线程中运行，不会阻塞请求。
+
+    为什么需要这个函数？
+    --------------------
+
+    用户创建因子后，需要运行分析来评估因子的有效性：
+    - 分析可能需要较长时间，不适合同步等待
+    - 使用后台线程运行，可以立即返回任务ID
+    - 用户可以通过任务ID查询分析进度和结果
+
+    工作原理（简单理解）
+    ------------------
+
+    就像启动一个后台任务：
+
+    1. **解析参数**：从 message_id 中提取因子ID和任务ID（如果有）
+    2. **创建任务**：在数据库中创建任务记录
+    3. **更新状态**：将因子状态更新为"运行中"
+    4. **验证参数**：验证因子参数是否合法
+    5. **启动分析**：
+       - 如果 is_thread=True：在后台线程中运行分析
+       - 如果 is_thread=False：同步运行分析（会阻塞）
+
+    Args:
+        message_id: 消息ID，可以是因子ID，也可以是 "factor_id$task_id" 格式
+        is_thread: 是否在后台线程中运行，True 表示后台运行，False 表示同步运行
+
+    Returns:
+        ResultData: 包含任务ID和状态信息的结果对象
+
+    Raises:
+        HTTPException: 如果因子ID格式无效或因子不存在，返回相应错误
+
+    Example:
+        >>> result = run_factor("507f1f77bcf86cd799439011", is_thread=True)
+        >>> # 返回: {"task_id": "task_456", "status": 1}
+    """
     try:
         print(message_id)
+        # 解析 message_id：如果包含 $，则提取因子ID和任务ID；否则生成新的任务ID
         if message_id.__contains__("$"):
-            factor_id=message_id.split("$")[0]
-            task_id=message_id.split("$")[1]
+            factor_id = message_id.split("$")[0]
+            task_id = message_id.split("$")[1]
         else:
             import uuid
-            task_id = str(uuid.uuid4()).replace("-", "")
+            task_id = str(uuid.uuid4()).replace("-", "")  # 生成新的任务ID
             factor_id = message_id
 
+        # 验证并转换因子ID
         object_id = validate_object_id(factor_id)
         # 生成任务ID
         # import uuid
@@ -551,15 +900,59 @@ def run_factor(message_id: str,is_thread: bool):
         logger.error(f"Failed to start factor analysis: {str(e)}\n{traceback.format_exc()}")
         return ResultData.fail("500", f"启动因子分析失败: {str(e)}")
 
-def run_factor_analysis(factor_id: str,start_date:str,end_date:str,user_id:str,factor_name:str,params:Params,task_id:str,object_id:ObjectId,logger:logging.Logger) -> None:
+def run_factor_analysis(factor_id: str, start_date: str, end_date: str, user_id: str, factor_name: str, params: Params, task_id: str, object_id: ObjectId, logger: logging.Logger) -> None:
+    """运行因子分析（实际执行函数）
+
+    这个函数是因子分析的实际执行函数，它会在后台线程中运行。
+    它会计算因子值，然后调用 factor_analysis 进行完整的分析。
+
+    为什么需要这个函数？
+    --------------------
+
+    因子分析是一个长时间运行的任务，需要：
+    - 计算因子值（可能需要较长时间）
+    - 运行完整的因子分析（包括分组、回测等）
+    - 更新任务状态和因子状态
+
+    这个函数在后台线程中运行，不会阻塞主线程。
+
+    工作原理
+    --------
+
+    1. 格式化日期（将 YYYY-MM-DD 转换为 YYYYMMDD）
+    2. 初始化数据读取模块
+    3. 获取因子数据（调用 get_custom_factor）
+    4. 检查因子数据是否为空
+    5. 运行因子分析（调用 factor_analysis）
+    6. 更新任务状态为"完成"
+    7. 更新因子状态为"已完成"
+
+    Args:
+        factor_id: 因子ID
+        start_date: 开始日期，格式 YYYY-MM-DD 或 YYYYMMDD
+        end_date: 结束日期，格式 YYYY-MM-DD 或 YYYYMMDD
+        user_id: 用户ID
+        factor_name: 因子名称
+        params: 分析参数对象
+        task_id: 任务ID
+        object_id: MongoDB ObjectId 对象
+        logger: 日志记录器
+
+    Returns:
+        None: 函数不返回值，结果通过更新数据库状态来反映
+
+    Note:
+        这个函数在后台线程中运行，如果出错会更新任务状态为失败
+    """
     try:
         logger.debug(f"Factor analysis for ID: {factor_id}, task ID: {task_id}")
 
         logger.debug("======= Starting factor calculation =======")
-        # 获取因子值 - 使用处理后的日期格式
+        # 获取因子值 - 格式化日期（将 YYYY-MM-DD 转换为 YYYYMMDD）
         start_date_formatted = start_date.replace("-", "") if "-" in start_date else start_date
         end_date_formatted = end_date.replace("-", "") if "-" in end_date else end_date
-        panda_data.init()
+        panda_data.init()  # 初始化数据读取模块
+        # 获取自定义因子数据
         df_factor = panda_data.get_custom_factor(
             factor_logger=logger,
             user_id=int(user_id),
@@ -569,16 +962,17 @@ def run_factor_analysis(factor_id: str,start_date:str,end_date:str,user_id:str,f
         )
         print(df_factor.tail(5))
         logger.debug(f"Factor data len : {len(df_factor)}")
-        # df_factor =df_factor
         logger.debug(f"=======Factor data retrieved successfully=======")
         
-        # 判断df_factor是否为空
+        # 判断因子数据是否为空
         if df_factor.empty:
             logger.error(f"Factor data is empty, please check your factor definition or date range")
-            return ResultData.fail(code="400", message= "Factor data is empty, please check your factor definition or date range")
-        df_factor=df_factor.reset_index(drop=False)
-        # 运行因子分析
-        factor_analysis(df_factor, params, factor_id,task_id,logger)
+            return ResultData.fail(code="400", message="Factor data is empty, please check your factor definition or date range")
+        
+        # 重置索引，将多级索引转换为普通列
+        df_factor = df_factor.reset_index(drop=False)
+        # 运行因子分析：调用 factor_analysis 函数进行完整的分析
+        factor_analysis(df_factor, params, factor_id, task_id, logger)
 
         # 线程内部执行完成后更新状态
         _db_handler.mongo_update(
