@@ -1,3 +1,42 @@
+"""
+Tushare 股票市场数据清洗器模块
+
+本模块提供了从 Tushare 数据源获取和清洗股票市场数据的清洗器类。
+它负责连接 Tushare API，获取股票的日线行情数据，并将数据清洗后存储到 MongoDB。
+
+核心概念
+--------
+
+- **数据源**：Tushare 数据平台，提供 A 股市场的历史数据
+- **数据清洗**：获取原始数据，计算涨跌停价格，转换日期格式，存储到数据库
+- **涨跌停价格**：根据前一日收盘价和涨跌幅限制计算的涨停/跌停价格
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，Tushare 是常用的数据源之一：
+- Tushare 提供了丰富的 A 股历史数据
+- 需要计算涨跌停价格用于回测
+- 需要将数据存储到本地数据库以提高查询效率
+
+工作原理（简单理解）
+------------------
+
+就像数据采集员：
+
+1. **连接数据源**：初始化 Tushare 连接（就像登录数据供应商系统）
+2. **获取行情数据**：获取指定日期的行情数据（就像获取当天价格）
+3. **计算涨跌停**：根据前收盘价计算涨跌停价格（就像计算限价）
+4. **存储数据**：将清洗后的数据存储到 MongoDB（就像入库）
+
+注意事项
+--------
+
+- 需要有效的 Tushare Token
+- 只在交易日进行数据清洗
+- 使用 upsert 操作避免数据重复
+"""
+
 import calendar
 from abc import ABC
 import tushare as ts
@@ -12,6 +51,15 @@ from panda_data_hub.utils.ts_utils import calculate_upper_limit, calculate_lower
 
 
 class TSStockMarketCleaner(ABC):
+    """Tushare 股票市场数据清洗器
+
+    这个类负责从 Tushare 获取股票市场数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接和 Tushare Token
+        db_handler: 数据库处理器实例
+        pro: Tushare Pro API 实例
+    """
     def __init__(self, config):
         self.config = config
         self.db_handler = DatabaseHandler(config)

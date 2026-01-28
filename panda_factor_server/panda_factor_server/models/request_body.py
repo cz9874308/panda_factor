@@ -1,7 +1,40 @@
+"""
+请求体模型模块
+
+本模块定义了 API 请求的数据模型，用于验证和解析客户端发送的请求数据。
+使用 Pydantic 进行数据验证，确保请求数据格式正确。
+
+核心概念
+--------
+
+- **请求模型**：定义 API 接口接收的请求参数结构
+- **数据验证**：使用 Pydantic 自动验证请求参数的类型和格式
+- **字段描述**：为每个字段提供描述和示例，自动生成 API 文档
+
+为什么需要这个模块？
+-------------------
+
+在 Web API 开发中，需要验证客户端发送的请求数据：
+- 确保必填字段存在
+- 验证字段类型正确
+- 验证字段值在有效范围内
+
+这个模块通过 Pydantic 模型实现自动验证，减少手动验证代码。
+
+注意事项
+--------
+
+- 所有模型都继承自 Pydantic 的 BaseModel
+- 使用 Field 定义字段的元数据（示例、描述等）
+- 使用 validator 定义自定义验证逻辑
+"""
+
 from pydantic import BaseModel, Field, validator
 from datetime import date
 from typing import Optional, Text
 from panda_factor_server.models.common import Params
+
+
 class CreateFactorRequest(BaseModel):
     """
     创建因子请求参数

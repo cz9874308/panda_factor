@@ -1,3 +1,37 @@
+"""
+迅投 (XtQuant) 因子数据清洗模块
+
+本模块提供了从 XtQuant（迅投量化）数据源获取和清洗因子数据的清洗器类。
+它负责获取成交量、成交额等基础因子数据，并将数据清洗后存储到 MongoDB。
+
+核心概念
+--------
+
+- **基础因子**：成交量 (volume)、成交额 (amount) 等用于因子计算的基础数据
+- **数据清洗**：从 XtQuant 获取数据，与本地行情数据合并，存储到数据库
+
+为什么需要这个模块？
+-------------------
+
+在因子计算中，需要一些基础因子数据：
+- 成交量数据：用于量价相关的因子计算
+- 成交额数据：用于资金流向相关的因子计算
+
+工作原理（简单理解）
+------------------
+
+1. **读取本地行情**：从 MongoDB 获取当日行情数据
+2. **获取因子数据**：从 XtQuant 获取成交量、成交额等数据
+3. **数据合并**：将因子数据与行情数据合并
+4. **存储数据**：将清洗后的数据存储到 MongoDB
+
+注意事项
+--------
+
+- 需要安装并配置 XtQuant 客户端
+- 依赖本地已有的行情数据
+"""
+
 import traceback
 from abc import ABC
 
@@ -14,6 +48,14 @@ from panda_data_hub.utils.xt_utils import xt_is_trading_day, get_xt_suffix, xt_g
 
 
 class XTFactorCleaner(ABC):
+    """迅投 (XtQuant) 因子数据清洗器
+
+    这个类负责从 XtQuant 获取因子数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接信息
+        db_handler: 数据库处理器实例
+    """
     def __init__(self, config):
         self.config = config
         self.db_handler = DatabaseHandler(config)

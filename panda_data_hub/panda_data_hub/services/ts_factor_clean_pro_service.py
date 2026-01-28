@@ -1,3 +1,41 @@
+"""
+Tushare 因子数据清洗服务模块
+
+本模块提供了从 Tushare 数据源获取和清洗因子数据的服务。
+它会从 Tushare 获取因子的历史数据，进行清洗和转换，然后存储到 MongoDB。
+
+核心概念
+--------
+
+- **因子数据**：从 Tushare 获取的市值、换手率、成交额等因子数据
+- **数据清洗**：获取原始数据，清洗、转换格式，存储到数据库
+- **并行处理**：使用多线程并行处理多个交易日的数据
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，需要获取高质量的因子数据：
+- Tushare 提供了丰富的因子数据
+- 需要将数据清洗并统一格式
+- 需要处理大量数据，并行处理可以提高效率
+
+工作原理（简单理解）
+------------------
+
+就像数据加工厂：
+
+1. **连接数据源**：初始化 Tushare 连接
+2. **获取原始数据**：从 Tushare 获取因子历史数据
+3. **清洗数据**：清洗、转换数据格式
+4. **存储数据**：将清洗后的数据存储到 MongoDB
+
+注意事项
+--------
+
+- 需要 Tushare 的 Token（在 config 中配置）
+- 使用并行处理提高效率，但要注意 API 调用频率限制
+"""
+
 from abc import ABC
 import tushare as ts
 from pymongo import UpdateOne
@@ -10,11 +48,21 @@ from tqdm import tqdm
 import time
 from panda_common.handlers.database_handler import DatabaseHandler
 from panda_common.logger_config import logger
-from panda_data_hub.utils.mongo_utils import  ensure_collection_and_indexes
+from panda_data_hub.utils.mongo_utils import ensure_collection_and_indexes
 from panda_data_hub.utils.ts_utils import get_tushare_suffix
 
 
 class FactorCleanerTSProService(ABC):
+    """Tushare 因子数据清洗服务
+
+    这个类负责从 Tushare 获取历史因子数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接和 Tushare Token
+        db_handler: 数据库处理器实例
+        progress_callback: 进度回调函数
+        pro: Tushare Pro API 实例
+    """
 
     def __init__(self,config):
         self.config = config

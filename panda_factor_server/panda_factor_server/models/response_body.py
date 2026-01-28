@@ -1,7 +1,39 @@
+"""
+响应体模型模块
+
+本模块定义了 API 响应的数据模型，用于格式化和序列化返回给客户端的数据。
+使用 Pydantic 进行数据序列化，确保响应数据格式统一。
+
+核心概念
+--------
+
+- **响应模型**：定义 API 接口返回的响应数据结构
+- **数据序列化**：使用 Pydantic 自动将 Python 对象转换为 JSON
+- **字段描述**：为每个字段提供描述和示例，自动生成 API 文档
+
+为什么需要这个模块？
+-------------------
+
+在 Web API 开发中，需要统一响应数据的格式：
+- 确保响应数据结构一致
+- 自动处理日期时间等特殊类型的序列化
+- 为 API 文档提供字段说明
+
+这个模块通过 Pydantic 模型实现自动序列化，保证响应格式一致。
+
+注意事项
+--------
+
+- 所有模型都继承自 Pydantic 的 BaseModel
+- 使用 Field 定义字段的元数据（示例、描述等）
+- 使用 Config.json_encoders 自定义特殊类型的序列化方式
+"""
+
 from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import Optional, Union, List
 from panda_factor_server.models.common import Params
+
 
 class FactorListResponse(BaseModel):
     """

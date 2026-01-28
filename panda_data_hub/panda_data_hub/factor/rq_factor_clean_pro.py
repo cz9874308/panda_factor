@@ -1,3 +1,37 @@
+"""
+RiceQuant 因子数据清洗模块
+
+本模块提供了从 RiceQuant（米筐）数据源获取和清洗因子数据的清洗器类。
+它负责获取市值、成交额等基础因子数据，并将数据清洗后存储到 MongoDB。
+
+核心概念
+--------
+
+- **基础因子**：市值 (market_cap)、成交额 (amount) 等用于因子计算的基础数据
+- **数据清洗**：从 RiceQuant 获取数据，与本地行情数据合并，存储到数据库
+
+为什么需要这个模块？
+-------------------
+
+在因子计算中，需要一些基础因子数据：
+- 市值数据：用于市值加权、市值中性化等
+- 成交额数据：用于流动性相关的因子计算
+
+工作原理（简单理解）
+------------------
+
+1. **读取本地行情**：从 MongoDB 获取当日行情数据
+2. **获取因子数据**：从 RiceQuant 获取市值、成交额等数据
+3. **数据合并**：将因子数据与行情数据合并
+4. **存储数据**：将清洗后的数据存储到 MongoDB
+
+注意事项
+--------
+
+- 需要有效的 RiceQuant 账号和密码
+- 依赖本地已有的行情数据
+"""
+
 from abc import ABC
 from datetime import datetime
 
@@ -13,6 +47,14 @@ from panda_data_hub.utils.rq_utils import get_ricequant_suffix
 
 
 class RQFactorCleaner(ABC):
+    """RiceQuant 因子数据清洗器
+
+    这个类负责从 RiceQuant 获取因子数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接和 RiceQuant 认证信息
+        db_handler: 数据库处理器实例
+    """
 
     def __init__(self,config):
         self.config = config

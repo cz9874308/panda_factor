@@ -1,3 +1,42 @@
+"""
+迅投 (XtQuant) 股票市场数据清洗器模块
+
+本模块提供了从迅投量化 (XtQuant) 数据源获取和清洗股票市场数据的清洗器类。
+它负责连接 XtQuant API，获取股票的日线行情数据，并将数据清洗后存储到 MongoDB。
+
+核心概念
+--------
+
+- **数据源**：迅投量化 (XtQuant) 数据平台，提供 A 股市场的历史数据
+- **数据清洗**：获取原始数据，转换日期格式，存储到数据库
+- **XTQuantManager**：XtQuant 连接管理器，使用单例模式管理连接
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，迅投量化是专业的数据源之一：
+- 迅投量化提供了实时和历史的 A 股数据
+- 数据质量高，更新及时
+- 需要将数据存储到本地数据库以提高查询效率
+
+工作原理（简单理解）
+------------------
+
+就像数据采集员：
+
+1. **连接数据源**：初始化 XtQuant 连接（就像登录数据供应商系统）
+2. **获取股票列表**：获取所有 A 股股票代码（就像获取商品清单）
+3. **获取行情数据**：获取指定日期的行情数据（就像获取当天价格）
+4. **存储数据**：将清洗后的数据存储到 MongoDB（就像入库）
+
+注意事项
+--------
+
+- 需要安装并配置 XtQuant 客户端
+- 只在交易日进行数据清洗
+- 使用 upsert 操作避免数据重复
+"""
+
 from datetime import datetime
 
 from pymongo import UpdateOne
@@ -15,6 +54,14 @@ from panda_data_hub.utils.xt_utils import xt_is_trading_day, XTQuantManager
 
 
 class XTStockMarketCleaner(ABC):
+    """迅投 (XtQuant) 股票市场数据清洗器
+
+    这个类负责从 XtQuant 获取股票市场数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接信息
+        db_handler: 数据库处理器实例
+    """
     def __init__(self, config):
         self.config = config
         self.db_handler = DatabaseHandler(config)

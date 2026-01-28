@@ -1,3 +1,43 @@
+"""
+RiceQuant 股票市场数据清洗器模块
+
+本模块提供了从 RiceQuant（米筐）数据源获取和清洗股票市场数据的清洗器类。
+它负责连接 RiceQuant API，获取股票的日线行情数据，并将数据清洗后存储到 MongoDB。
+
+核心概念
+--------
+
+- **数据源**：RiceQuant（米筐）数据平台，提供 A 股市场的历史数据
+- **数据清洗**：获取原始数据，添加指数成分股标记，转换日期格式，存储到数据库
+- **指数成分股**：沪深300、中证500、中证1000 的成分股信息
+
+为什么需要这个模块？
+-------------------
+
+在量化分析中，需要获取标准化的股票市场数据：
+- RiceQuant 提供了丰富的历史数据，但格式需要转换
+- 需要标记股票是否属于某个指数的成分股
+- 需要将数据存储到本地数据库以提高查询效率
+
+工作原理（简单理解）
+------------------
+
+就像数据采集员：
+
+1. **连接数据源**：初始化 RiceQuant 连接（就像登录数据供应商系统）
+2. **获取股票列表**：获取所有 A 股股票代码（就像获取商品清单）
+3. **获取行情数据**：获取指定日期的行情数据（就像获取当天价格）
+4. **添加标记**：标记股票是否属于沪深300/中证500/中证1000（就像贴标签）
+5. **存储数据**：将清洗后的数据存储到 MongoDB（就像入库）
+
+注意事项
+--------
+
+- 需要有效的 RiceQuant 账号和密码
+- 只在交易日进行数据清洗
+- 使用 upsert 操作避免数据重复
+"""
+
 from datetime import datetime
 from pymongo import UpdateOne
 import pandas as pd
@@ -11,6 +51,17 @@ from panda_data_hub.utils.mongo_utils import ensure_collection_and_indexes
 
 
 class RQStockMarketCleaner(ABC):
+    """RiceQuant 股票市场数据清洗器
+
+    这个类负责从 RiceQuant 获取股票市场数据并进行清洗处理。
+
+    Attributes:
+        config: 配置字典，包含数据库连接和 RiceQuant 认证信息
+        db_handler: 数据库处理器实例
+        hs300_components: 沪深300成分股列表
+        zz500_components: 中证500成分股列表
+        zz1000_components: 中证1000成分股列表
+    """
     def __init__(self, config):
         self.config = config
         self.db_handler = DatabaseHandler(config)
